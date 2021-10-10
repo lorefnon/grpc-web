@@ -21,12 +21,23 @@ import com.google.inject.Injector;
 
 class GrpcWebGuiceModule extends AbstractModule {
   private static Injector sInjector;
-  private static int sGrpcPortNum;
+  private final GrpcWebConfiguration config;
+
+  private GrpcWebGuiceModule(GrpcWebConfiguration config) {
+    this.config = config;
+  }
 
   // This method should be called only once.
-  static void init(int i) {
-    sGrpcPortNum = i;
-    sInjector = Guice.createInjector(new GrpcWebGuiceModule());
+  /** @deprecated */
+  static void init(int grpcPortNum) {
+    GrpcWebConfiguration config = new GrpcWebConfiguration();
+    config.setGrpcPortNum(grpcPortNum);
+    sInjector = Guice.createInjector(new GrpcWebGuiceModule(config));
+  }
+
+  // This method should be called only once.
+  static void init(GrpcWebConfiguration config) {
+    sInjector = Guice.createInjector(new GrpcWebGuiceModule(config));
   }
 
   static Injector getInjector() {
@@ -35,7 +46,9 @@ class GrpcWebGuiceModule extends AbstractModule {
 
   @Override
   protected void configure() {
+    bind(GrpcWebConfiguration.class)
+            .toInstance(config);
     bind(GrpcServiceConnectionManager.class)
-        .toInstance(new GrpcServiceConnectionManager(sGrpcPortNum));
+        .toInstance(new GrpcServiceConnectionManager(config.getGrpcPortNum()));
   }
 }

@@ -33,11 +33,13 @@ class SendResponse {
 
   private final String mContentType;
   private final HttpServletResponse mResp;
+  private final MetadataUtil metadataUtil;
   private boolean isFinalResponseSent = false;
 
-  SendResponse(HttpServletRequest req, HttpServletResponse resp) {
+  SendResponse(HttpServletRequest req, HttpServletResponse resp, MetadataUtil metadataUtil) {
     mContentType = req.getContentType();
     mResp = resp;
+    this.metadataUtil = metadataUtil;
   }
 
   synchronized void writeHeaders(Metadata headers) {
@@ -46,7 +48,7 @@ class SendResponse {
     mResp.setHeader("transfer-encoding", "chunked");
     mResp.setHeader("trailer", "grpc-status,grpc-message");
     if (headers == null) return;
-    Map<String, String> ht = MetadataUtil.getHttpHeadersFromMetadata(headers);
+    Map<String, String> ht = metadataUtil.getHttpHeadersFromMetadata(headers);
     StringBuffer sb = new StringBuffer();
     for (String key : ht.keySet()) {
       mResp.setHeader(key, ht.get(key));
@@ -75,7 +77,7 @@ class SendResponse {
     if (isFinalResponseSent) return;
     StringBuffer sb = new StringBuffer();
     if (trailer != null) {
-      Map<String, String> ht = MetadataUtil.getHttpHeadersFromMetadata(trailer);
+      Map<String, String> ht = metadataUtil.getHttpHeadersFromMetadata(trailer);
       for (String key : ht.keySet()) {
         sb.append(String.format("%s:%s\r\n", key, ht.get(key)));
       }

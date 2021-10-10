@@ -15,22 +15,27 @@
  */
 package io.grpcweb;
 
+import com.google.inject.Inject;
 import io.grpc.Metadata;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+
+import java.util.*;
 import javax.servlet.http.HttpServletRequest;
 
 class MetadataUtil {
   private static final String BINARY_HEADER_SUFFIX = "-bin";
   private static final String GRPC_HEADER_PREFIX = "x-grpc-";
-  private static final List<String> EXCLUDED = Arrays.asList("x-grpc-web", "content-type",
-      "grpc-accept-encoding", "grpc-encoding");
 
-  static Metadata getHtpHeaders(HttpServletRequest req) {
+  private final List<String> excludedHeaders = Arrays.asList("x-grpc-web", "content-type",
+      "grpc-accept-encoding", "grpc-encoding");
+  private final List<String> includedHeaders = new ArrayList<>();
+
+  @Inject
+  MetadataUtil(GrpcWebConfiguration config) {
+    excludedHeaders.addAll(config.getExcludedHttpHeaders());
+    includedHeaders.addAll(config.getIncludedHttpHeaders());
+  }
+
+  Metadata getHtpHeaders(HttpServletRequest req) {
     Metadata httpHeaders = new Metadata();
     Enumeration<String> headerNames = req.getHeaderNames();
     if (headerNames == null) {
@@ -40,10 +45,10 @@ class MetadataUtil {
     // TODO: do we need to copy all "x-*" headers instead?
     while (headerNames.hasMoreElements()) {
       String headerName = headerNames.nextElement();
-      if (EXCLUDED.contains(headerName.toLowerCase())) {
+      if (excludedHeaders.contains(headerName.toLowerCase())) {
         continue;
       }
-      if (headerName.toLowerCase().startsWith(GRPC_HEADER_PREFIX)) {
+      if (includedHeaders.contains(headerName.toLowerCase()) || headerName.toLowerCase().startsWith(GRPC_HEADER_PREFIX)) {
         // Get all the values of this header.
         Enumeration<String> values = req.getHeaders(headerName);
         if (values != null) {
@@ -67,10 +72,10 @@ class MetadataUtil {
     return httpHeaders;
   }
 
-  static Map<String, String> getHttpHeadersFromMetadata(Metadata trailer) {
+  Map<String, String> getHttpHeadersFromMetadata(Metadata trailer) {
     Map<String, String> map = new HashMap<>();
     for (String key : trailer.keys()) {
-      if (EXCLUDED.contains(key.toLowerCase())) {
+      if (excludedHeaders.contains(key.toLowerCase())) {
         continue;
       }
       if (key.endsWith(Metadata.BINARY_HEADER_SUFFIX)) {

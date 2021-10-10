@@ -38,17 +38,21 @@ class RequestHandler {
 
   private final MessageHandler mMessageHandler;
   private final GrpcServiceConnectionManager mGrpcServiceConnectionManager;
+  private final GrpcWebConfiguration config;
+  private final MetadataUtil metadataUtil;
 
   @Inject
-  RequestHandler(GrpcServiceConnectionManager g, MessageHandler m) {
+  RequestHandler(GrpcServiceConnectionManager g, MessageHandler m, GrpcWebConfiguration config, MetadataUtil metadataUtil) {
     mMessageHandler = m;
     mGrpcServiceConnectionManager = g;
+    this.config = config;
+    this.metadataUtil = metadataUtil;
   }
 
   public void handle(final HttpServletRequest req, final HttpServletResponse resp) {
     DebugInfo.printRequest(req);
     MessageHandler.ContentType contentType = mMessageHandler.validateContentType(req);
-    SendResponse sendResponse = new SendResponse(req, resp);
+    SendResponse sendResponse = new SendResponse(req, resp, metadataUtil);
 
     try {
       // From the request, get the rpc-method name and class name and then get their corresponding
@@ -72,7 +76,7 @@ class RequestHandler {
 
       // get the stub for the rpc call and the method to be called within the stub
       io.grpc.stub.AbstractStub asyncStub = getRpcStub(channel, cls, "newStub");
-      Metadata headers = MetadataUtil.getHtpHeaders(req);
+      Metadata headers = metadataUtil.getHtpHeaders(req);
       if (!headers.keys().isEmpty()) {
         asyncStub = MetadataUtils.attachHeaders(asyncStub, headers);
       }
@@ -88,8 +92,9 @@ class RequestHandler {
       // Invoke the rpc call
       asyncStubCall.invoke(asyncStub, inObj,
           new GrpcCallResponseReceiver(sendResponse, latch));
-      if (!latch.await(500, TimeUnit.MILLISECONDS)) {
+      if (!latch.await(config.getGrpcProxyTimeoutMS(), TimeUnit.MILLISECONDS)) {
         LOG.warning("grpc call took too long!");
+        resp.setStatus(HttpServletResponse.SC_GATEWAY_TIMEOUT);
       }
     } catch (Exception e) {
       LOG.info("Exception occurred: " + e.getMessage());

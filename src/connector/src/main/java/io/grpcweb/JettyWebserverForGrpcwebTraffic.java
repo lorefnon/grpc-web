@@ -19,6 +19,8 @@ import java.lang.invoke.MethodHandles;
 import java.util.EnumSet;
 import java.util.logging.Logger;
 import javax.servlet.DispatcherType;
+
+import com.google.inject.Inject;
 import org.eclipse.jetty.servlet.ServletHandler;
 
 public class JettyWebserverForGrpcwebTraffic {
@@ -29,6 +31,11 @@ public class JettyWebserverForGrpcwebTraffic {
 
   public JettyWebserverForGrpcwebTraffic(int grpcwebPort) {
     mGrpcwebPort = grpcwebPort;
+  }
+
+  @Inject
+  JettyWebserverForGrpcwebTraffic(GrpcWebConfiguration config) {
+    mGrpcwebPort = config.getGrpcWebPortNum();
   }
 
   public org.eclipse.jetty.server.Server start() {
