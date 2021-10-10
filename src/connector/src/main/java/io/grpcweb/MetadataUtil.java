@@ -16,19 +16,24 @@
 package io.grpcweb;
 
 import io.grpc.Metadata;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+
+import java.util.*;
 import javax.servlet.http.HttpServletRequest;
 
-class MetadataUtil {
+public class MetadataUtil {
   private static final String BINARY_HEADER_SUFFIX = "-bin";
   private static final String GRPC_HEADER_PREFIX = "x-grpc-";
   private static final List<String> EXCLUDED = Arrays.asList("x-grpc-web", "content-type",
       "grpc-accept-encoding", "grpc-encoding");
+  private static final List<String> INCLUDED = new ArrayList<>();
+
+  public static void addIncludedHeader(String headerName) {
+    INCLUDED.add(headerName);
+  }
+
+  public static void addExcludedHeader(String headerName) {
+    EXCLUDED.add(headerName);
+  }
 
   static Metadata getHtpHeaders(HttpServletRequest req) {
     Metadata httpHeaders = new Metadata();
@@ -43,7 +48,7 @@ class MetadataUtil {
       if (EXCLUDED.contains(headerName.toLowerCase())) {
         continue;
       }
-      if (headerName.toLowerCase().startsWith(GRPC_HEADER_PREFIX)) {
+      if (INCLUDED.contains(headerName.toLowerCase()) || headerName.toLowerCase().startsWith(GRPC_HEADER_PREFIX)) {
         // Get all the values of this header.
         Enumeration<String> values = req.getHeaders(headerName);
         if (values != null) {
